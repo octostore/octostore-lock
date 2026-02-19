@@ -34,7 +34,8 @@ jobs:
             echo "Binary version verified: ${BINARY_VERSION}"
 
             echo "=== Stop → swap → start ==="
-            sudo systemctl stop octostore-lock
+            sudo systemctl stop octostore-lock octostore 2>/dev/null || true
+            sleep 1
             cp target/release/octostore /opt/octostore-lock/octostore
             chmod +x /opt/octostore-lock/octostore
             sudo systemctl start octostore-lock
