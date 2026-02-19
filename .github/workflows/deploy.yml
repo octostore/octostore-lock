@@ -24,20 +24,20 @@ jobs:
             cd /opt/octostore-lock
             git fetch origin main
             git checkout main
-            git reset --hard "$(git rev-list -n 1 HEAD)"
             git pull origin main
 
             echo "=== Building release binary ==="
             cargo build --release 2>&1
-            cp target/release/octostore /opt/octostore-lock/octostore
-            chmod +x /opt/octostore-lock/octostore
 
             echo "=== Verifying binary version ==="
-            BINARY_VERSION=$(/opt/octostore-lock/octostore --version 2>/dev/null | awk '{print $2}' || echo "unknown")
+            BINARY_VERSION=$(./target/release/octostore --version 2>/dev/null | awk '{print $2}' || echo "unknown")
             echo "Binary version verified: ${BINARY_VERSION}"
 
             echo "=== Stop → swap → start ==="
-            sudo systemctl restart octostore-lock
+            sudo systemctl stop octostore-lock
+            cp target/release/octostore /opt/octostore-lock/octostore
+            chmod +x /opt/octostore-lock/octostore
+            sudo systemctl start octostore-lock
 
             echo "=== Verifying deployment (waiting for active) ==="
             for i in $(seq 1 15); do
