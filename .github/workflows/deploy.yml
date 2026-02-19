@@ -19,30 +19,28 @@ jobs:
           script: |
             set -e
             VERSION="${{ github.event.release.tag_name }}"
-            BINARY_URL="https://github.com/aronchick/octostore-lock/releases/download/${VERSION}/octostore-lock-x86_64-unknown-linux-gnu.tar.gz"
 
-            echo "=== Pulling latest site files (${VERSION}) ==="
+            echo "=== Pulling latest source (${VERSION}) ==="
             cd /opt/octostore-lock
             git fetch origin main
             git checkout main
+            git reset --hard "$(git rev-list -n 1 HEAD)"
             git pull origin main
 
-            echo "=== Downloading binary from release ==="
-            curl -sL "${BINARY_URL}" -o /tmp/octostore-lock.tar.gz
-            tar -xzf /tmp/octostore-lock.tar.gz -C /tmp/
+            echo "=== Building release binary ==="
+            cargo build --release 2>&1
+            cp target/release/octostore /opt/octostore-lock/octostore
+            chmod +x /opt/octostore-lock/octostore
 
             echo "=== Verifying binary version ==="
-            BINARY_VERSION=$(/tmp/octostore-lock --version 2>/dev/null | awk '{print $2}' || echo "unknown")
+            BINARY_VERSION=$(/opt/octostore-lock/octostore --version 2>/dev/null | awk '{print $2}' || echo "unknown")
             echo "Binary version verified: ${BINARY_VERSION}"
 
             echo "=== Stop → swap → start ==="
-            sudo systemctl stop octostore-lock || true
-            sudo mv /tmp/octostore-lock /opt/octostore-lock/octostore-lock
-            sudo chmod +x /opt/octostore-lock/octostore-lock
-            sudo systemctl start octostore-lock
+            sudo systemctl restart octostore-lock
 
             echo "=== Verifying deployment (waiting for active) ==="
-            for i in $(seq 1 10); do
+            for i in $(seq 1 15); do
               STATUS=$(systemctl is-active octostore-lock 2>/dev/null || true)
               echo "  attempt ${i}: ${STATUS}"
               if [ "${STATUS}" = "active" ]; then
